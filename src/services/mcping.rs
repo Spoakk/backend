@@ -95,29 +95,68 @@ fn write_string(buf: &mut Vec<u8>, s: &str) {
     buf.extend_from_slice(s.as_bytes());
 }
 
-fn strip_color_codes(s: &str) -> String {
-    let mut result = String::with_capacity(s.len());
-    let mut chars = s.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '§' { chars.next(); } else { result.push(c); }
-    }
-    result
-}
 
-fn extract_description(val: &serde_json::Value) -> String {
+// § kodlarını koruyarak description'ı düz string'e çevirir
+fn extract_description_raw(val: &serde_json::Value) -> String {
     match val {
-        serde_json::Value::String(s) => strip_color_codes(s),
+        serde_json::Value::String(s) => s.clone(),
         serde_json::Value::Object(obj) => {
-            if let Some(text) = obj.get("text").and_then(|v| v.as_str()) {
-                let mut res = strip_color_codes(text);
-                if let Some(extra) = obj.get("extra").and_then(|v| v.as_array()) {
-                    for part in extra { res.push_str(&extract_description(part)); }
+            let mut res = String::new();
+
+            // color field: named renk veya #RRGGBB hex
+            if let Some(color) = obj.get("color").and_then(|v| v.as_str()) {
+                if color.starts_with('#') {
+                    // hex renk — §#RRGGBB formatında gönder, CLI parse eder
+                    res.push_str(&format!("§{}", color));
+                } else if let Some(code) = color_name_to_code(color) {
+                    res.push_str(&format!("§{}", code));
                 }
-                res
-            } else { String::new() }
+            }
+
+            if obj.get("bold").and_then(|v| v.as_bool()).unwrap_or(false)       { res.push_str("§l"); }
+            if obj.get("italic").and_then(|v| v.as_bool()).unwrap_or(false)     { res.push_str("§o"); }
+            if obj.get("underlined").and_then(|v| v.as_bool()).unwrap_or(false) { res.push_str("§n"); }
+            if obj.get("strikethrough").and_then(|v| v.as_bool()).unwrap_or(false) { res.push_str("§m"); }
+
+            if let Some(text) = obj.get("text").and_then(|v| v.as_str()) {
+                res.push_str(text);
+            }
+            if let Some(extra) = obj.get("extra").and_then(|v| v.as_array()) {
+                for part in extra {
+                    res.push_str("§r");
+                    res.push_str(&extract_description_raw(part));
+                }
+            }
+            res
         }
         _ => String::new(),
     }
+}
+
+fn color_name_to_code(name: &str) -> Option<char> {
+    match name {
+        "black"        => Some('0'),
+        "dark_blue"    => Some('1'),
+        "dark_green"   => Some('2'),
+        "dark_aqua"    => Some('3'),
+        "dark_red"     => Some('4'),
+        "dark_purple"  => Some('5'),
+        "gold"         => Some('6'),
+        "gray"         => Some('7'),
+        "dark_gray"    => Some('8'),
+        "blue"         => Some('9'),
+        "green"        => Some('a'),
+        "aqua"         => Some('b'),
+        "red"          => Some('c'),
+        "light_purple" => Some('d'),
+        "yellow"       => Some('e'),
+        "white"        => Some('f'),
+        _              => None,
+    }
+}
+
+fn extract_description(val: &serde_json::Value) -> String {
+    extract_description_raw(val)
 }
 
 fn extract_software(version_name: &str) -> Option<String> {

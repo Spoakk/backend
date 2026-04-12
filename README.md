@@ -1,6 +1,6 @@
 ![Spoak Banner](readmd/spoakbanner-backend.png)
 
-# Spoak Backend v0.1
+# Spoak Backend v0.1.1
 
 Minecraft sunucu yöneticileri ve oyuncuları için araç koleksiyonu. Rust/Axum ile geliştirilmiş, [spoak-frontend](https://github.com/spoakk/frontend) ile çalışır.
 
