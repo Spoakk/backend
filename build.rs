@@ -16,15 +16,13 @@ fn main() {
         .flag_if_supported("-fwrapv")       
         .flag_if_supported("-march=native") 
         .flag_if_supported("-mtune=native") 
-        .flag_if_supported("-flto")         
         .flag_if_supported("-funroll-loops")
         .flag_if_supported("-ffast-math")  
         .flag_if_supported("-fomit-frame-pointer") 
         .flag_if_supported("-fprefetch-loop-arrays")
         .flag_if_supported("/O2")
         .flag_if_supported("/Oi")          
-        .flag_if_supported("/Ot")          
-        .flag_if_supported("/GL")           
+        .flag_if_supported("/Ot")           
         .compile("cubiomes");
 
     println!("cargo:rerun-if-changed=cubiomes_shim.c");
