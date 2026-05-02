@@ -12,7 +12,6 @@ use axum::{Router, http::Method, Extension};
 use tower_http::cors::{CorsLayer, AllowOrigin};
 use tower_http::trace::{TraceLayer, DefaultMakeSpan, DefaultOnResponse};
 use tower_http::compression::CompressionLayer;
-use std::net::SocketAddr;
 use std::time::Duration;
 use tracing::Level;
 use middleware::Limiters;
@@ -88,13 +87,13 @@ async fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|_| "4000".into())
         .parse()?;
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
+    let addr = std::net::SocketAddr::from((std::net::Ipv6Addr::UNSPECIFIED, port));
     tracing::info!("Listening on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(
         listener,
-        app.into_make_service_with_connect_info::<SocketAddr>()
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>()
     ).await?;
 
     Ok(())

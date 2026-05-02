@@ -23,7 +23,9 @@ fn is_trusted_proxy(ip: IpAddr) -> bool {
             || (o[0] == 172 && o[1] >= 16 && o[1] <= 31)
             || (o[0] == 192 && o[1] == 168)
         }
-        IpAddr::V6(v6) => v6.is_loopback(),
+        IpAddr::V6(v6) => {
+            v6.is_loopback() || (v6.segments()[0] & 0xfe00) == 0xfc00 // fc00::/7 (ULA)
+        }
     }
 }
 
@@ -130,7 +132,7 @@ pub async fn rate_limit_middleware(
 ) -> Response {
     let path = req.uri().path();
 
-    if path == "/api/v2/health" {
+    if path.starts_with("/api/v2/health") || path.ends_with("/health") {
         return next.run(req).await;
     }
 
