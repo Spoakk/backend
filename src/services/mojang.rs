@@ -25,7 +25,7 @@ pub async fn get_release_versions(client: &reqwest::Client) -> Result<Vec<String
     let manifest: Manifest = client
         .get(MANIFEST_URL)
         .header("User-Agent", USER_AGENT)
-        .timeout(Duration::from_secs(5))
+        .timeout(Duration::from_secs(8))
         .send()
         .await?
         .json()
@@ -50,6 +50,7 @@ pub async fn get_supported_versions(client: &reqwest::Client) -> Result<Vec<Stri
     Ok(filtered)
 }
 
+#[inline]
 pub fn version_to_mc_const(version: &str) -> Option<c_int> {
     let major = major_of(version);
     match major {
@@ -63,6 +64,7 @@ pub fn version_to_mc_const(version: &str) -> Option<c_int> {
     }
 }
 
+#[inline(always)]
 fn major_of(version: &str) -> &str {
     let mut dots = 0;
     for (i, c) in version.char_indices() {

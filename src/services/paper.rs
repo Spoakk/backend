@@ -18,7 +18,7 @@ pub async fn get_builds(client: &reqwest::Client, version: &str) -> Result<Vec<J
     let builds: Vec<PaperBuild> = client
         .get(&url)
         .header("User-Agent", USER_AGENT)
-        .timeout(Duration::from_secs(3))
+        .timeout(Duration::from_millis(5000))
         .send()
         .await?
         .json()

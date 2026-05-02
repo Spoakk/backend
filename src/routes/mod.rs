@@ -3,13 +3,15 @@ mod mcping;
 mod player;
 mod seedmap;
 
-use axum::{Router, routing::get, Json};
-use serde_json::json;
+use axum::{Router, routing::get, response::IntoResponse, http::header};
 
-async fn health_check() -> Json<serde_json::Value> {
-    Json(json!({
-        "status": "ok"
-    }))
+static HEALTH_BODY: &[u8] = br#"{"status":"ok"}"#;
+
+async fn health_check() -> impl IntoResponse {
+    (
+        [(header::CONTENT_TYPE, "application/json")],
+        HEALTH_BODY,
+    )
 }
 
 pub fn router(client: reqwest::Client) -> Router {

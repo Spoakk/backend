@@ -31,13 +31,13 @@ pub struct AppState {
 
 pub fn router(client: reqwest::Client) -> Router {
     let version_cache = Cache::builder()
-        .time_to_live(Duration::from_secs(3600))
-        .max_capacity(10)
+        .time_to_live(Duration::from_secs(7200))
+        .max_capacity(20)
         .build();
 
     let builds_cache = Cache::builder()
-        .time_to_live(Duration::from_secs(1800))
-        .max_capacity(1000)
+        .time_to_live(Duration::from_secs(3600))
+        .max_capacity(2000)
         .build();
 
     let state = Arc::new(AppState {
@@ -69,8 +69,15 @@ async fn mc_versions(
         })
         .await
     {
-        Ok(versions) => Json(json!({ "versions": versions })).into_response(),
-        Err(e) => (StatusCode::BAD_GATEWAY, Json(json!({ "error": e.to_string() }))).into_response(),
+        Ok(versions) => (
+            StatusCode::OK,
+            [(axum::http::header::CACHE_CONTROL, "public, max-age=7200")],
+            Json(json!({ "versions": versions }))
+        ).into_response(),
+        Err(e) => {
+            tracing::error!("Mojang version fetch failed: {e:#}");
+            (StatusCode::BAD_GATEWAY, Json(json!({ "error": e.to_string() }))).into_response()
+        },
     }
 }
 
@@ -90,7 +97,11 @@ async fn paper_builds(
         })
         .await
     {
-        Ok(builds) => Json(json!({ "builds": builds })).into_response(),
+        Ok(builds) => (
+            StatusCode::OK,
+            [(axum::http::header::CACHE_CONTROL, "public, max-age=3600")],
+            Json(json!({ "builds": builds }))
+        ).into_response(),
         Err(e) => (StatusCode::NOT_FOUND, Json(json!({ "error": e.to_string() }))).into_response(),
     }
 }
@@ -117,7 +128,11 @@ async fn paper_latest(
                 .or_else(|| builds.iter().find(|b| b.channel == "experimental"))
                 .cloned();
             match latest {
-                Some(build) => Json(build).into_response(),
+                Some(build) => (
+                    StatusCode::OK,
+                    [(axum::http::header::CACHE_CONTROL, "public, max-age=3600")],
+                    Json(build)
+                ).into_response(),
                 None => (StatusCode::NOT_FOUND, Json(json!({ "error": format!("No build found for {version}") }))).into_response(),
             }
         }
@@ -141,7 +156,11 @@ async fn leaf_builds(
         })
         .await
     {
-        Ok(builds) => Json(json!({ "builds": builds })).into_response(),
+        Ok(builds) => (
+            StatusCode::OK,
+            [(axum::http::header::CACHE_CONTROL, "public, max-age=3600")],
+            Json(json!({ "builds": builds }))
+        ).into_response(),
         Err(e) => (StatusCode::NOT_FOUND, Json(json!({ "error": e.to_string() }))).into_response(),
     }
 }

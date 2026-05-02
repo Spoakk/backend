@@ -34,7 +34,7 @@ fn is_private_ip(ip: &IpAddr) -> bool {
             ipv6.is_loopback()
                 || ipv6.is_multicast()
                 || (ipv6.segments()[0] & 0xfe00) == 0xfc00
-                || (ipv6.segments()[0] & 0xffc0) == 0xfe8
+                || (ipv6.segments()[0] & 0xffc0) == 0xfe80
         }
     }
 }

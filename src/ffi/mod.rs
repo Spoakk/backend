@@ -77,6 +77,7 @@ pub struct BiomeGenerator {
 unsafe impl Send for BiomeGenerator {}
 
 impl BiomeGenerator {
+    #[inline]
     pub fn new(mc_version: c_int, seed: i64, flags: u32) -> Self {
         let ptr = unsafe { cubiomes_alloc_generator() };
         assert!(!ptr.is_null());
@@ -87,6 +88,7 @@ impl BiomeGenerator {
         Self { ptr, mc: mc_version, seed: seed as u64 }
     }
 
+    #[inline]
     pub fn get_biomes(&self, x: i32, z: i32, sx: i32, sz: i32, scale: i32, y: i32) -> Vec<i32> {
         unsafe {
             let r = Range { scale, x, z, sx, sz, y, sy: 0 };
@@ -100,20 +102,23 @@ impl BiomeGenerator {
         }
     }
 
+    #[inline]
     pub fn find_structures(&mut self, struct_type: c_int, center_x: i32, center_z: i32, radius_blocks: i32) -> Vec<(i32, i32)> {
         let mut conf = StructureConfig { salt: 0, region_size: 0, chunk_range: 0, struct_type: 0, dim: 0, rarity: 0.0 };
         let ok = unsafe { getStructureConfig(struct_type, self.mc, &mut conf) };
-        if ok == 0 || conf.region_size == 0 { return vec![]; }
+        if ok == 0 || conf.region_size == 0 { return Vec::new(); }
 
         let region_blocks = (conf.region_size as i32) * 16;
         let reg_cx = center_x.div_euclid(region_blocks);
         let reg_cz = center_z.div_euclid(region_blocks);
         let reg_r = (radius_blocks / region_blocks).max(2) + 1;
 
-        let mut results = Vec::new();
+        let estimated_capacity = ((2 * reg_r + 1) as usize).pow(2) / 4;
+        let mut results = Vec::with_capacity(estimated_capacity.min(256));
+        let mut pos = Pos { x: 0, z: 0 };
+
         for rx in (reg_cx - reg_r)..=(reg_cx + reg_r) {
             for rz in (reg_cz - reg_r)..=(reg_cz + reg_r) {
-                let mut pos = Pos { x: 0, z: 0 };
                 let valid = unsafe { getStructurePos(struct_type, self.mc, self.seed, rx, rz, &mut pos) };
                 if valid == 0 { continue; }
                 let viable = unsafe { isViableStructurePos(struct_type, self.ptr, pos.x, pos.z, 0) };

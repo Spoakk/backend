@@ -3,8 +3,8 @@
 ## Must-follow constraints
 
 - All routes are GET-only. The CORS layer explicitly allows only `GET`. Do not add mutating endpoints without updating the CORS config in `main.rs`.
-- All routes must be nested under `/api` — the router in `main.rs` wraps everything with `.nest("/api", ...)`.
-- `/api/health` is exempt from rate limiting by hardcoded path check in `middleware.rs`. Do not rename it.
+- All routes must be nested under `/api/v2` — the router in `main.rs` wraps everything with `.nest("/api/v2", ...)`.
+- `/api/v2/health` is exempt from rate limiting by hardcoded path check in `middleware.rs`. Do not rename it.
 - The cubiomes C library (`cubiomes/`) is a git submodule. Do not modify any files inside it. All C interop goes through `cubiomes_shim.c` and `src/ffi/mod.rs`.
 - All cubiomes FFI calls are blocking and CPU-intensive. They must run inside `tokio::task::spawn_blocking`. Never call `BiomeGenerator` methods directly in an async context.
 - `BiomeGenerator` is `Send` but not `Sync`. Do not share it across threads; construct a new one per `spawn_blocking` closure.
@@ -26,7 +26,7 @@ A C compiler must be present. The `cc` crate compiles cubiomes at build time via
 - Caching uses `moka::future::Cache` with `try_get_with`. TTLs are set per-router in the `router()` fn of each route file, not globally.
 - Each route module owns its own `AppState` struct and `router()` fn. State is not shared between route modules.
 - `reqwest::Client` is constructed once in `main.rs` with a 10s timeout and shared via clone into each router.
-- `ALLOWED_ORIGINS` env var controls CORS. Comma-separated. Defaults to `https://spoak.cc,http://localhost:3000`.
+- `ALLOWED_ORIGINS` env var controls CORS. Comma-separated. Defaults to `https://spoak.cc,http://localhost:3000,https://spoak.vercel.app`.
 - `PORT` env var controls listen port. Defaults to `4000`.
 
 ## Important locations

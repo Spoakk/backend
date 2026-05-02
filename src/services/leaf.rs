@@ -41,7 +41,7 @@ pub async fn get_builds_for_version(client: &reqwest::Client, version: &str) -> 
     let resp: BuildsResponse = client
         .get(&url)
         .header("User-Agent", USER_AGENT)
-        .timeout(Duration::from_secs(3))
+        .timeout(Duration::from_millis(5000))
         .send()
         .await?
         .json()

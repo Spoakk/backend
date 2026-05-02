@@ -6,7 +6,7 @@ use tokio::time::timeout;
 use std::net::SocketAddr;
 use std::time::{Duration, Instant};
 
-const TOTAL_TIMEOUT: Duration = Duration::from_millis(2500);
+const TOTAL_TIMEOUT: Duration = Duration::from_millis(1500);
 const MAX_JSON_SIZE: usize = 64 * 1024;
 const MAX_FAVICON_SIZE: usize = 32 * 1024;
 
@@ -52,6 +52,7 @@ struct McPlayer {
     name: String,
 }
 
+#[inline(always)]
 fn write_varint(buf: &mut Vec<u8>, mut value: i32) {
     loop {
         let mut byte = (value & 0x7F) as u8;
@@ -62,6 +63,7 @@ fn write_varint(buf: &mut Vec<u8>, mut value: i32) {
     }
 }
 
+#[inline(always)]
 async fn write_varint_async<W: tokio::io::AsyncWrite + Unpin>(writer: &mut W, mut value: i32) -> Result<()> {
     let mut buf = [0u8; 5];
     let mut pos = 0;
@@ -77,6 +79,7 @@ async fn write_varint_async<W: tokio::io::AsyncWrite + Unpin>(writer: &mut W, mu
     Ok(())
 }
 
+#[inline(always)]
 async fn read_varint_async<R: tokio::io::AsyncRead + Unpin>(reader: &mut R) -> Result<i32> {
     let mut result = 0;
     let mut shift = 0;
@@ -90,6 +93,7 @@ async fn read_varint_async<R: tokio::io::AsyncRead + Unpin>(reader: &mut R) -> R
     Ok(result)
 }
 
+#[inline(always)]
 fn write_string(buf: &mut Vec<u8>, s: &str) {
     write_varint(buf, s.len() as i32);
     buf.extend_from_slice(s.as_bytes());
@@ -101,15 +105,17 @@ fn extract_description_raw(val: &serde_json::Value) -> String {
     match val {
         serde_json::Value::String(s) => s.clone(),
         serde_json::Value::Object(obj) => {
-            let mut res = String::new();
+            let mut res = String::with_capacity(128);
 
             // color field: named renk veya #RRGGBB hex
             if let Some(color) = obj.get("color").and_then(|v| v.as_str()) {
                 if color.starts_with('#') {
                     // hex renk — §#RRGGBB formatında gönder, CLI parse eder
-                    res.push_str(&format!("§{}", color));
+                    res.push('§');
+                    res.push_str(color);
                 } else if let Some(code) = color_name_to_code(color) {
-                    res.push_str(&format!("§{}", code));
+                    res.push('§');
+                    res.push(code);
                 }
             }
 
@@ -133,6 +139,7 @@ fn extract_description_raw(val: &serde_json::Value) -> String {
     }
 }
 
+#[inline(always)]
 fn color_name_to_code(name: &str) -> Option<char> {
     match name {
         "black"        => Some('0'),
@@ -155,14 +162,16 @@ fn color_name_to_code(name: &str) -> Option<char> {
     }
 }
 
+#[inline(always)]
 fn extract_description(val: &serde_json::Value) -> String {
     extract_description_raw(val)
 }
 
+#[inline(always)]
 fn extract_software(version_name: &str) -> Option<String> {
-    let known = ["Paper", "Leaf", "Purpur", "Spigot", "CraftBukkit", "Folia",
+    static KNOWN: &[&str] = &["Paper", "Leaf", "Purpur", "Spigot", "CraftBukkit", "Folia",
                  "Velocity", "Waterfall", "BungeeCord", "Fabric", "Forge"];
-    known.iter().find(|&&sw| version_name.contains(sw)).map(|&sw| sw.to_string())
+    KNOWN.iter().find(|&&sw| version_name.contains(sw)).map(|&sw| sw.to_string())
 }
 
 fn build_status(host: &str, port: u16, resp: McStatusResponse, latency: u64) -> ServerStatus {
@@ -190,6 +199,7 @@ fn build_status(host: &str, port: u16, resp: McStatusResponse, latency: u64) -> 
     }
 }
 
+#[inline(always)]
 fn offline_status(host: &str, port: u16, elapsed_ms: u64) -> ServerStatus {
     ServerStatus {
         online: false, host: host.to_string(), port,
@@ -211,6 +221,7 @@ pub async fn ping_addr(host: &str, addr: SocketAddr) -> ServerStatus {
 async fn ping_process(host: &str, addr: SocketAddr) -> Result<(McStatusResponse, u64)> {
     let start = Instant::now();
     let stream = TcpStream::connect(addr).await?;
+    stream.set_nodelay(true)?;
     let latency = start.elapsed().as_millis() as u64;
 
     let mut reader = BufReader::with_capacity(8192, stream);
