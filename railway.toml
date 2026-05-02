@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "RUSTFLAGS='-C target-cpu=native -C link-arg=-s' cargo build --release && cp target/release/spoak-backend /usr/local/bin/spoak-backend"
+buildCommand = "cargo build --release && cp target/release/spoak-backend /usr/local/bin/spoak-backend"
 
 [deploy]
 startCommand = "/usr/local/bin/spoak-backend"
