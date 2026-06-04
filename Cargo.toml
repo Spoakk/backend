@@ -18,7 +18,7 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
 base64 = "0.22"
-moka = { version = "0.12", features = ["future"] }
+moka = { version = "0.12", features = ["future", "sync"] }
 dashmap = "6"
 sentry = { version = "0.47", features = ["tracing", "tower", "tower-axum-matched-path"] }
 bytes = "1"
