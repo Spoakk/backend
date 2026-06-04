@@ -1,58 +1,60 @@
-![Spoak Banner](readmd/spoakbanner-backend.png)
+<div align="center">
+<pre>
+  ███████╗██████╗  ██████╗  █████╗ ██╗  ██╗
+  ██╔════╝██╔══██╗██╔═══██╗██╔══██╗██║ ██╔╝
+  ███████╗██████╔╝██║   ██║███████║█████╔╝ 
+  ╚════██║██╔═══╝ ██║   ██║██╔══██║██╔═██╗ 
+  ███████║██║     ╚██████╔╝██║  ██║██║  ██╗
+  ╚══════╝╚═╝      ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
+</pre>
 
-# Spoak Backend v0.1.1
+# Spoak Backend (v0.2.5)
 
-Minecraft sunucu yöneticileri ve oyuncuları için araç koleksiyonu. Rust/Axum ile geliştirilmiş, [spoak-frontend](https://github.com/spoakk/frontend) ile çalışır.
+**Yüksek performanslı, Lock-Free ve Zero-Copy Minecraft Araçları API'ı.**  
+Rust ve Axum ile geliştirildi. Devasa trafik yüklerine dayanıklı TTL tabanlı Moka önbelleği kullanır.
 
-[![GitHub](https://img.shields.io/badge/GitHub-spoakk%2Ffrontend-181717?logo=github)](https://github.com/spoakk/frontend)
+[![GitHub](https://img.shields.io/badge/GitHub-spoakk%2Ffrontend-181717?logo=github)](https://github.com/spoakk/frontend) [![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust)](https://rust-lang.org)
 
-## Endpoint'ler
+</div>
 
-| Endpoint | Açıklama |
+---
+
+## 🚀 API Uç Noktaları (Endpoints)
+
+Tüm endpoint'ler saniyelik rate-limit'e tabi olup, sıkça kullanılan yanıtlar anında RAM'den (Moka) dönmektedir.
+
+| Endpoint | İşlev |
 |----------|----------|
-| `GET /api/health` | Sağlık kontrolü |
-| `GET /api/mcping?host=&port=` | Minecraft sunucusunu ping'le |
-| `GET /api/player/:username` | UUID, skin ve oyuncu bilgilerini sorgula |
-| `GET /api/seedmap/tile?seed=&x=&z=&size=&version=` | Biyom tile verisi üret (binary, i16 LE) |
-| `GET /api/seedmap/structures?seed=&x=&z=&radius=&version=` | Seed'e göre yapı konumlarını bul |
-| `GET /api/seedmap/versions` | Desteklenen Minecraft sürümleri |
-| `GET /api/serverjars/versions` | Mojang sürüm listesi |
-| `GET /api/serverjars/paper/:version/builds` | Paper build listesi |
-| `GET /api/serverjars/paper/:version/latest` | En son kararlı Paper build'i |
-| `GET /api/serverjars/leaf/:version/builds` | Leaf build listesi |
+| `GET /api/mcping` | Hedef Minecraft sunucusunun canlı verilerini, gecikme sürelerini ve MOTD formatlarını getirir. (Ping Flood Korumalı) |
+| `GET /api/player/:username` | Oyuncu UUID'sini, Skin model tipini ve cape (pelerin) detaylarını Mojang'dan çekip önbellekler. |
+| `GET /api/seedmap/tile` | Cubiomes C kütüphanesini kullanarak Minecraft dünyalarının anlık biyom chunk'larını üretir ve Zero-Copy (BytesMut) ile direkt bytestream döner. |
+| `GET /api/seedmap/structures` | Belirli bir koordinatın etrafındaki Tapınak, Köy veya Gemi Enkazı gibi yapıları listeler. |
+| `GET /api/serverjars/*` | Mojang, Paper ve Leaf build versiyonlarının güncel dağıtımlarını listeler. |
 
-## Kurulum
+---
+
+## 🛠️ Kurulum ve Çalıştırma
+
+Gereksinimler: **Rust Stable (1.75+)** ve Cubiomes (C-FFI) derlemek için **GCC/Clang**.
 
 ```bash
+# 1. Depoyu indirin
 git clone https://github.com/spoakk/backend
 cd spoak-backend
+
+# 2. Çevresel değişkenleri yapılandırın (PORT vs.)
 cp .env.example .env
-cargo run
+
+# 3. Yüksek performans modunda (release) çalıştırın
+cargo run --release
 ```
 
-## Ortam Değişkenleri
+## ⚡ Optimizasyonlar
+- **Zero-Copy & Moka Cache:** Ağır CPU kullanan C FFI (Cubiomes) sonuçları Moka üzerinde asenkron olarak önbelleklenir. Chunk başına $<1ms$ dönüş sağlanır.
+- **Lock-Free Rate Limiter:** Arka planda sunucuyu bloke eden eski `DashMap` yapıları kaldırılarak TTL tabanlı Moka Rate-Limiter sistemine geçilmiştir.
+- **Graceful Shutdown:** `ctrl_c` dinlenerek, aktif bağlantıların güvenle kapatılması sağlanır.
 
-| Değişken | Varsayılan | Açıklama |
-|----------|------------|----------|
-| `PORT` | `4000` | Dinleme portu |
-| `ALLOWED_ORIGINS` | `https://spoak.cc,http://localhost:3000` | Virgülle ayrılmış CORS origin listesi |
-| `SENTRY_DSN` | — | Sentry DSN (isteğe bağlı) |
-
-## Teknolojiler
-
-- [Rust](https://www.rust-lang.org) — Dil
-- [Axum 0.7](https://github.com/tokio-rs/axum) — Web framework
-- [Tokio](https://tokio.rs) — Async runtime
-- [cubiomes](https://github.com/Cubitect/cubiomes) — Minecraft biyom/yapı üretimi (C FFI)
-- [Moka](https://github.com/moka-rs/moka) — Async önbellek
-- [Sentry](https://sentry.io) — Hata takibi
-
-## Gereksinimler
-
-- Rust stable (1.75+)
-- C derleyici (gcc / clang) — cubiomes C kaynak kodunu derlemek için gerekli
-
-## Linkler
-
-- [GitHub](https://github.com/spoakk)
-- [Discord](https://discord.gg/SBbU3rCtGe)
+## 🔗 İlgili Bağlantılar
+- **Web Sitesi:** [spoak.cc](https://spoak.cc)
+- **Topluluk:** [Discord Sunucumuz](https://discord.gg/SBbU3rCtGe)
+- **CLI Versiyonu:** [spoak-cli](https://github.com/spoakk/cli)

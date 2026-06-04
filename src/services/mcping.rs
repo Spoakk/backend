@@ -10,7 +10,7 @@ const TOTAL_TIMEOUT: Duration = Duration::from_millis(1500);
 const MAX_JSON_SIZE: usize = 64 * 1024;
 const MAX_FAVICON_SIZE: usize = 32 * 1024;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct ServerStatus {
     pub online: bool,
     pub host: String,

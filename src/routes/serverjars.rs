@@ -11,7 +11,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use moka::future::Cache;
 
-use crate::services::{paper, leaf, mojang};
+use crate::services::{paper, leaf, mojang, purpur};
 use crate::models::JarVersion;
 
 fn validate_version(version: &str) -> Result<(), StatusCode> {
@@ -52,6 +52,10 @@ pub fn router(client: reqwest::Client) -> Router {
         // Paper
         .route("/paper/:version/builds", get(paper_builds))
         .route("/paper/:version/latest", get(paper_latest))
+        // Folia
+        .route("/folia/:version/builds", get(folia_builds))
+        // Purpur
+        .route("/purpur/:version/builds", get(purpur_builds))
         // Leaf
         .route("/leaf/:version/builds", get(leaf_builds))
         .with_state(state)
@@ -93,7 +97,7 @@ async fn paper_builds(
     
     match state.builds_cache
         .try_get_with(cache_key, async {
-            paper::get_builds(&state.client, &version).await
+            paper::get_builds(&state.client, "paper", &version).await
         })
         .await
     {
@@ -117,7 +121,7 @@ async fn paper_latest(
     let cache_key = format!("paper_{}", version);
     let builds_result = state.builds_cache
         .try_get_with(cache_key, async {
-            paper::get_builds(&state.client, &version).await
+            paper::get_builds(&state.client, "paper", &version).await
         })
         .await;
 
@@ -153,6 +157,56 @@ async fn leaf_builds(
     match state.builds_cache
         .try_get_with(cache_key, async {
             leaf::get_builds_for_version(&state.client, &version).await
+        })
+        .await
+    {
+        Ok(builds) => (
+            StatusCode::OK,
+            [(axum::http::header::CACHE_CONTROL, "public, max-age=3600")],
+            Json(json!({ "builds": builds }))
+        ).into_response(),
+        Err(e) => (StatusCode::NOT_FOUND, Json(json!({ "error": e.to_string() }))).into_response(),
+    }
+}
+
+async fn folia_builds(
+    State(state): State<Arc<AppState>>,
+    Path(version): Path<String>,
+) -> impl IntoResponse {
+    if let Err(status) = validate_version(&version) {
+        return (status, Json(json!({ "error": "Invalid version format" }))).into_response();
+    }
+    
+    let cache_key = format!("folia_{}", version);
+    
+    match state.builds_cache
+        .try_get_with(cache_key, async {
+            paper::get_builds(&state.client, "folia", &version).await
+        })
+        .await
+    {
+        Ok(builds) => (
+            StatusCode::OK,
+            [(axum::http::header::CACHE_CONTROL, "public, max-age=3600")],
+            Json(json!({ "builds": builds }))
+        ).into_response(),
+        Err(e) => (StatusCode::NOT_FOUND, Json(json!({ "error": e.to_string() }))).into_response(),
+    }
+}
+
+async fn purpur_builds(
+    State(state): State<Arc<AppState>>,
+    Path(version): Path<String>,
+) -> impl IntoResponse {
+    if let Err(status) = validate_version(&version) {
+        return (status, Json(json!({ "error": "Invalid version format" }))).into_response();
+    }
+    
+    let cache_key = format!("purpur_{}", version);
+    
+    match state.builds_cache
+        .try_get_with(cache_key, async {
+            purpur::get_builds(&state.client, &version).await
         })
         .await
     {

@@ -12,9 +12,8 @@ fn is_safe_paper_url(url: &str) -> bool {
         || url.starts_with("https://api.papermc.io/")
 }
 
-#[tracing::instrument(skip(client))]
-pub async fn get_builds(client: &reqwest::Client, version: &str) -> Result<Vec<JarVersion>> {
-    let url = format!("{BASE}/versions/{version}/builds");
+pub async fn get_builds(client: &reqwest::Client, project: &str, version: &str) -> Result<Vec<JarVersion>> {
+    let url = format!("https://fill.papermc.io/v3/projects/{}/versions/{}/builds", project, version);
     let builds: Vec<PaperBuild> = client
         .get(&url)
         .header("User-Agent", USER_AGENT)

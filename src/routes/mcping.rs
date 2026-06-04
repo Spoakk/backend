@@ -1,9 +1,12 @@
-use axum::{Router, routing::get, extract::Query, Json, response::IntoResponse, http::StatusCode};
+use axum::{Router, routing::get, extract::{Query, State}, Json, response::IntoResponse, http::{StatusCode, header}};
 use serde::Deserialize;
 use serde_json::json;
 use std::net::{IpAddr, SocketAddr};
+use std::sync::Arc;
+use std::time::Duration;
+use moka::future::Cache;
 
-use crate::services::mcping;
+use crate::services::mcping::{self, ServerStatus};
 
 #[derive(Deserialize)]
 pub struct PingQuery {
@@ -11,8 +14,21 @@ pub struct PingQuery {
     port: Option<u16>,
 }
 
+#[derive(Clone)]
+pub struct McpingState {
+    pub cache: Cache<String, ServerStatus>,
+}
+
 pub fn router() -> Router {
-    Router::new().route("/", get(ping_handler))
+    let state = Arc::new(McpingState {
+        cache: Cache::builder()
+            .time_to_live(Duration::from_secs(60))
+            .max_capacity(2000)
+            .build(),
+    });
+    Router::new()
+        .route("/", get(ping_handler))
+        .with_state(state)
 }
 
 fn is_private_ip(ip: &IpAddr) -> bool {
@@ -78,7 +94,10 @@ async fn resolve_and_validate(host: &str, port: u16) -> Result<SocketAddr, &'sta
 }
 
 // GET /api/mcping?host=play.example.com&port=25565
-async fn ping_handler(Query(q): Query<PingQuery>) -> impl IntoResponse {
+async fn ping_handler(
+    State(state): State<Arc<McpingState>>,
+    Query(q): Query<PingQuery>
+) -> impl IntoResponse {
     let host = q.host.trim().to_string();
     if host.is_empty() {
         return (
@@ -95,14 +114,23 @@ async fn ping_handler(Query(q): Query<PingQuery>) -> impl IntoResponse {
         ).into_response();
     }
 
-    match resolve_and_validate(&host, port).await {
+    let cache_key = format!("{}:{}", host.to_lowercase(), port);
+
+    let result = state.cache.try_get_with(cache_key, async move {
+        match resolve_and_validate(&host, port).await {
+            Err(reason) => Err(reason.to_string()),
+            Ok(resolved_addr) => Ok(mcping::ping_addr(&host, resolved_addr).await),
+        }
+    }).await;
+
+    match result {
+        Ok(status) => (
+            [(header::CACHE_CONTROL, "public, max-age=60")],
+            Json(status)
+        ).into_response(),
         Err(reason) => (
             StatusCode::FORBIDDEN,
-            Json(json!({ "error": reason })),
-        ).into_response(),
-        Ok(resolved_addr) => {
-            let status = mcping::ping_addr(&host, resolved_addr).await;
-            Json(status).into_response()
-        }
+            Json(json!({ "error": reason.to_string() })),
+        ).into_response()
     }
 }

@@ -21,4 +21,16 @@ pub struct PaperDownloadEntry {
     pub url: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct PurpurResponse {
+    pub project: String,
+    pub version: String,
+    pub builds: PurpurBuilds,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PurpurBuilds {
+    pub all: Vec<String>,
+}
+
 
