@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build-and-release:
+    name: Build & Release Backend
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      
+    - name: Build Release
+      run: cargo build --release
+      
+    - name: Prepare Artifacts
+      shell: bash
+      run: |
+        if [ "${{ runner.os }}" = "Windows" ]; then
+          mv target/release/spoak-backend.exe spoak-backend-${{ runner.os }}.exe
+        else
+          mv target/release/spoak-backend spoak-backend-${{ runner.os }}
+        fi
+
+    - name: Upload Release Assets
+      uses: softprops/action-gh-release@v1
+      with:
+        files: spoak-backend-*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
